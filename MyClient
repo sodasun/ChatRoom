@@ -1,0 +1,181 @@
+/**
+ * This is a program for client to chat
+ * @version 1.7.0_40
+ * @author Yahui Sun
+ */
+import  java.net.*;
+import java.io.*;
+import java.util.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+/**
+ * A<code>MyClient</code> a client connects to server and communicates 
+ *with server. client can read server ip and port number from command line.
+ */
+class MyClient extends JFrame{
+	
+	private final static int PORT = 9999;
+	private final static String HOST = "127.0.0.1"; //default port number and server ip
+		
+	
+	public static void main(String[] args){
+		
+		MyClient client = new MyClient();
+		
+	}
+		
+	private String host;
+	private int port;
+	
+	private String clientName = "Client";
+	
+	private JTextArea textArea = null;
+	private JTextField ipField = null;
+	private JTextField portField = null;
+	private JTextField nameField = null;
+	//private JTextArea listArea = null;
+	private JTextField textField = null;
+	private JButton button = null;
+	private JPanel panel = null;
+	private JPanel northPanel = null;
+	private JScrollPane scrollPanel = null;
+	private JScrollPane listScrollPanel = null;
+	
+	
+	private JButton connectButton = null;
+	private JButton disconnectButton = null;
+	private Label ipLabel = null;
+	private Label portLabel = null;
+	private Label nameLabel = null;
+	
+	private Scanner scan = null;
+	private PrintWriter pw = null;
+			
+	/**
+	  *construct a client interface for chatting.
+	  */	
+	public MyClient(){
+		
+		//this.host = host;
+		//this.port = port;
+			
+		textArea = new JTextArea();
+		ipField = new JTextField("127.0.0.1",10);
+		portField = new JTextField("9999",5);
+		nameField = new JTextField("client",6);
+		//listArea = new JTextArea();
+		
+		scrollPanel = new JScrollPane(textArea);
+		
+		//listScrollPanel = new JScrollPane(listArea);
+			
+		textField = new JTextField(20);
+		button = new JButton("Send");
+		button.addActionListener(new ActionListener(){
+			
+			public void actionPerformed(ActionEvent e){
+				
+				String info = textField.getText();
+				textField.setText("");
+				//textArea.append(new Date()+"\n"+"Client:"+info+"\n");      //send button：向服务器发送信息
+				pw.println(nameField.getText()+": "+info);
+				
+				
+				
+			} 
+			
+		});
+		
+	    panel = new JPanel();
+		panel.add(textField);
+		panel.add(button);
+		connectButton = new JButton("connect");
+		disconnectButton = new JButton("disconnect");
+		
+		connectButton.addActionListener(new ActionListener(){
+				
+			public void actionPerformed(ActionEvent e){
+				
+				host = ipField.getText();
+				port = Integer.parseInt(portField.getText());
+				
+				try
+				{
+					Socket client = new Socket(host,port);
+					scan = new Scanner(client.getInputStream());
+					pw = new PrintWriter(client.getOutputStream(),true);  //connect botton: 连接服务器，把用户名字发过去，开启一个线程来
+					                                                      //一直检测scan里有没有接收到服务器发来的内容，把内容打到用户屏幕上。
+					pw.println(nameField.getText());
+					
+					new Thread(new Runnable(){
+						
+						public void run(){
+							while(true)
+							{
+								if(scan.hasNextLine()){
+								String info = scan.nextLine();
+								textArea.append(info+"\n"); 
+								}   //线程3
+				
+							}
+							
+						}
+						
+						
+					}).start(); 
+				
+	
+				} catch(IOException m){m.printStackTrace();}
+		
+				
+				
+		
+			}
+		});
+		
+		
+		disconnectButton.addActionListener(new ActionListener(){
+			
+			public void actionPerformed(ActionEvent e){
+				
+				pw.println("imoutimoutimout12345");                 //disconnect button:发一条特殊的信息到服务器申请断开
+				pw.flush();
+				
+			}
+		});
+		
+	    northPanel = new JPanel();
+		ipLabel = new Label("ip:");
+		portLabel = new Label("port:");
+		nameLabel = new Label("name:");
+		
+		
+		
+		northPanel.add(ipLabel);
+		northPanel.add(ipField);
+		northPanel.add(portLabel);
+		northPanel.add(portField);
+		northPanel.add(nameLabel);
+		northPanel.add(nameField);
+		northPanel.add(connectButton);
+		northPanel.add(disconnectButton);
+		
+		this.setLayout(new BorderLayout());
+		
+		this.add(scrollPanel,BorderLayout.CENTER);
+		this.add(panel,BorderLayout.SOUTH);
+		
+		this.add(northPanel,BorderLayout.NORTH);
+		
+		
+		this.setTitle("Client");
+		this.setSize(650,500);
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setVisible(true);   //set the interface
+	
+		
+	}	
+		
+}	
