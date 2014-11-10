@@ -1,0 +1,151 @@
+/**
+ * This is a program for group chat
+ * @version 1.7.0_40
+ * @author Yahui Sun
+ */
+import  java.net.*;
+import java.io.*;
+import java.util.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.concurrent.*;
+
+/**
+ * A<code>GroupChatServer</code> a server can receive clients' messages and transfer it to all clients connected in.
+ */
+class GroupChatServer extends JFrame{
+		
+	public static void main(String[] args){
+		
+		GroupChatServer server = new GroupChatServer(9999);;
+	
+	}
+	
+	private static ArrayList<Socket> clientList = new ArrayList<Socket>();	
+	private static BlockingQueue<String> clientMessages = new LinkedBlockingQueue<String>();	
+	private int port;	
+	
+	private JTextArea textArea = null;	
+	private JScrollPane scrollPanel = null;	
+	private JTextArea memberList = null;	
+	private JPanel eastPanel = null;
+	
+	private Object lock = new Object();
+	//private PrintWriter pw = null;
+	
+	/**
+	  *construct a server interface for showing clients who connect in and disconnect out.
+	  *@param port is port number
+	  */
+	public GroupChatServer(int port){
+		
+		this.port = port;		
+		textArea = new JTextArea();		
+		scrollPanel = new JScrollPane(textArea);
+		
+		this.add(scrollPanel,"Center");
+		this.setTitle("Server");
+		this.setSize(400,300);
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setVisible(true);
+		
+		try
+		{
+			ServerSocket ss = new ServerSocket(port);
+			new Thread(new MessageSender()).start();  //线程1
+			
+			while(true){
+				
+				Socket oneClient = ss.accept(); //one client connects in.
+				Scanner nameScan = new Scanner(oneClient.getInputStream());
+				String name = nameScan.nextLine();
+				textArea.append(new Date()+" "+name+" connected in."+"\n");
+				new Thread(new MessageReceiver(oneClient)).start();//start a thread to put clients' message to the Queue.//线程2
+				synchronized(lock)
+				{
+					clientList.add(oneClient);
+				}//add the Socket of the client to clientList		 //arraylist 增加元素操作		
+			}
+		} catch(Exception e){e.printStackTrace();}
+		
+	}	
+	
+	/**
+	  *this class is a thread to move the message on the top of the Queue and send it to all clients
+	  */
+	private class MessageSender implements Runnable{
+		
+		public void run(){
+			
+			while(true){
+				
+				
+				
+				try{
+					
+				    String firstMessage = clientMessages.take();   //blockingqueue
+					
+						for(Socket s : clientList ){               //arrayList
+							try{
+								PrintWriter pw = new PrintWriter(s.getOutputStream());
+								
+								pw.println(firstMessage);
+								pw.flush();
+							}catch (IOException e){e.printStackTrace();}
+						}
+					
+					}catch (InterruptedException e){e.printStackTrace();}
+					
+				}
+			}
+		}
+	
+	
+	/**
+	  *this class is a thread to handle with the messages got from clients
+	  */
+	private class MessageReceiver implements Runnable{
+		
+		private Socket client;
+		
+		public MessageReceiver(Socket sock){
+			
+			this.client = sock;
+		}
+		
+		public void run(){
+			
+			try{
+	
+				while(true){
+					
+					String data = null;
+					Scanner scan = new Scanner(client.getInputStream());
+					if(scan.hasNextLine()){
+						data = scan.nextLine();}
+						if(data.equals("imoutimoutimout12345")){
+							textArea.append(new Date()+" One client disconnected"+"\n");//if the client click disconnect,server will                                                                                              //receive "imoutimoutimout12345",and disconnect                                                                                          //the connection.
+							synchronized(lock){
+							clientList.remove(client);  
+							}   //arraylist
+							client.close();
+							break;
+						}
+						else{
+							
+							try{
+								clientMessages.put(new Date()+"\n"+data+"\n"); //if the message is not for disconnection,move it to the                                                                                  //Queue
+							}
+							catch(InterruptedException e){e.printStackTrace();}
+							
+						}
+					}
+				
+			}catch (IOException e)
+				{e.printStackTrace();}
+		}
+		
+		
+	}
+}
